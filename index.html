@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TIME PATROL HQ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Rajdhani:wght@500;700&family=Black+Ops+One&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Noto Sans KR', sans-serif; overflow: hidden; background: #020617; }
+        .font-tech { font-family: 'Rajdhani', sans-serif; }
+        .font-stamp { font-family: 'Black Ops One', cursive; }
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+
+        .shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        .active-tab {
+            background: #06b6d4 !important;
+            color: #0f172a !important;
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.4);
+            border-color: #22d3ee !important;
+        }
+
+        .scanline {
+            width: 100%; height: 100px; z-index: 10;
+            background: linear-gradient(0deg, rgba(0,0,0,0) 0%, rgba(6, 182, 212, 0.1) 50%, rgba(0,0,0,0) 100%);
+            opacity: 0.1; position: absolute; bottom: 100%;
+            animation: scanline 8s linear infinite; pointer-events: none;
+        }
+        @keyframes scanline { 0% { bottom: 100%; } 100% { bottom: -100px; } }
+        
+        .fade-out { animation: fadeOut 0.8s forwards; animation-delay: 1s; }
+        @keyframes fadeOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(1.05); pointer-events: none; } }
+
+        .stamp-animate { animation: stampIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        @keyframes stampIn { 0% { opacity: 0; transform: translate(-50%, -50%) scale(3) rotate(-15deg); } 100% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(-15deg); } }
+    </style>
+</head>
+<body class="text-slate-100 h-screen flex flex-col selection:bg-cyan-500/30 uppercase">
+
+    <!-- Intro / Login Screen -->
+    <div id="intro-screen" class="fixed inset-0 z-[100] bg-slate-950 flex flex-col items-center justify-center p-6 text-center overflow-hidden">
+        <div class="scanline"></div>
+        <div id="access-stamp" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 opacity-0 pointer-events-none border-4 border-red-500 p-4 rounded-lg bg-red-900/80 backdrop-blur-sm shadow-[0_0_40px_rgba(239,68,68,0.5)] rotate-[-15deg]">
+            <div class="border-2 border-red-500 px-8 py-3">
+                <h2 class="text-5xl md:text-7xl font-stamp text-red-500 tracking-widest uppercase">ACCESS<br>GRANTED</h2>
+            </div>
+        </div>
+        <div class="relative z-20 max-w-md w-full space-y-10 transition-all duration-700" id="intro-content">
+            <div class="space-y-4 text-center">
+                <div class="w-20 h-20 rounded-3xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-[0_0_40px_rgba(6,182,212,0.4)] mx-auto ring-4 ring-slate-900 text-white">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v20M2 12h20M12 2a10 10 0 0 1 10 10 10 10 0 0 1-10 10 10 10 0 0 1-10-10 10 10 0 0 1 10-10z"/><circle cx="12" cy="12" r="4"/></svg>
+                </div>
+                <h1 class="text-5xl font-bold tracking-tighter font-tech text-white uppercase">Time Patrol</h1>
+                <p class="text-cyan-500 font-tech tracking-[0.4em] text-xs mt-1 uppercase">Headquarters Terminal</p>
+            </div>
+            <div class="glass-panel p-8 rounded-3xl shadow-2xl space-y-6 border border-slate-700/50">
+                <div class="space-y-5">
+                    <div class="text-left space-y-1.5">
+                        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Agent Identification</label>
+                        <input type="text" id="intro-name-input" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-5 py-4 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 font-medium transition-all" placeholder="요원명을 입력하세요" autocomplete="off" maxlength="12">
+                    </div>
+                    <div class="text-left space-y-1.5">
+                        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 flex justify-between">
+                            <span>Restore Progress</span>
+                            <span class="text-slate-700 uppercase tracking-tighter">Optional Code</span>
+                        </label>
+                        <input type="text" id="intro-code-input" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-5 py-4 text-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono uppercase tracking-widest transition-all" placeholder="----">
+                    </div>
+                    <button id="btn-start-game" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-4 rounded-xl transition-all shadow-lg active:scale-[0.98] uppercase tracking-widest">Connect to System</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="h-16 border-b border-slate-800 bg-slate-900/80 flex items-center px-6 justify-between shrink-0 sticky top-0 z-40 backdrop-blur-xl">
+        <div class="flex items-center gap-3 text-white">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20M12 2a10 10 0 0 1 10 10 10 10 0 0 1-10 10 10 10 0 0 1-10-10 10 10 0 0 1 10-10z"/><circle cx="12" cy="12" r="4"/></svg>
+            </div>
+            <h1 class="text-xl font-bold font-tech uppercase tracking-tight">Time Patrol HQ</h1>
+        </div>
+        <button id="btn-open-save" class="text-xs font-bold bg-slate-800 hover:bg-slate-700 text-cyan-400 px-4 py-2 rounded-lg border border-slate-700 transition-all uppercase">Save State</button>
+    </header>
+
+    <!-- Main Workspace -->
+    <div class="flex-1 flex flex-col lg:flex-row h-full overflow-hidden max-w-[1600px] mx-auto w-full p-4 md:p-6 gap-6">
+        
+        <!-- Sidebar -->
+        <aside class="w-full lg:w-[380px] flex flex-col gap-6 shrink-0 lg:h-full overflow-y-auto pr-1">
+            <section class="glass-panel rounded-3xl p-7 relative border border-slate-800 shadow-xl overflow-hidden shrink-0">
+                <div class="absolute top-0 left-0 w-1.5 h-full bg-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.5)]"></div>
+                <h2 class="text-xs font-bold text-cyan-400 mb-8 font-tech tracking-[0.2em] uppercase">Operational Status</h2>
+                <div class="space-y-6">
+                    <div class="flex justify-between items-end border-b border-slate-800/80 pb-3">
+                        <span class="text-slate-500 text-xs font-bold uppercase">Codename</span>
+                        <span id="agent-name" class="text-2xl font-bold text-white tracking-tight normal-case">---</span>
+                    </div>
+                    <div class="flex justify-between items-center border-b border-slate-800/80 pb-3">
+                        <span class="text-slate-500 text-xs font-bold uppercase">Rank</span>
+                        <div class="flex items-center gap-2">
+                            <div id="rank-indicator" class="w-3.5 h-3.5 rounded-full bg-slate-400 shadow-lg"></div>
+                            <span id="rank-text" class="text-slate-100 font-bold uppercase">---</span>
+                        </div>
+                    </div>
+                    <div class="space-y-2 uppercase">
+                        <div class="flex justify-between text-[10px] font-bold text-slate-500">
+                            <span>EXP Progress</span>
+                            <span class="text-cyan-400 font-tech text-sm"><span id="current-xp">0</span> XP</span>
+                        </div>
+                        <div class="h-1.5 bg-slate-900 rounded-full overflow-hidden">
+                            <div id="xp-bar" class="h-full bg-gradient-to-r from-purple-600 to-blue-500 w-0 transition-all duration-1000"></div>
+                        </div>
+                    </div>
+                    <div class="bg-slate-900/40 rounded-2xl p-5 border border-slate-800/50 space-y-4 uppercase">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-bold text-slate-400 flex items-center gap-2 tracking-tighter">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-yellow-400"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg> Chrono Cell
+                            </span>
+                            <span id="energy-text" class="font-tech text-cyan-400 text-xl font-bold">100%</span>
+                        </div>
+                        <div class="h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                            <div id="energy-bar" class="h-full bg-cyan-500 transition-all duration-500" style="width: 100%;"></div>
+                        </div>
+                        <button id="btn-recharge" class="w-full py-2.5 bg-slate-800 hover:bg-emerald-600 hover:text-white text-emerald-400 border border-emerald-500/20 rounded-xl font-bold text-xs transition-all uppercase tracking-widest">RECHARGE</button>
+                    </div>
+                </div>
+            </section>
+            <section class="glass-panel rounded-3xl p-7 border border-slate-800 flex-1 shadow-lg overflow-y-auto min-h-[200px]">
+                 <h3 class="text-[10px] font-bold text-slate-600 mb-5 font-tech tracking-[0.3em] uppercase pb-3 border-b border-slate-800">Promotion Protocol</h3>
+                 <ul class="space-y-3" id="rank-list"></ul>
+            </section>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="flex-1 flex flex-col h-full overflow-hidden">
+            <div class="bg-slate-900/50 p-3 rounded-[2.5rem] border border-slate-800 mb-6 shadow-xl shrink-0">
+                <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 w-full" id="episode-tabs"></div>
+            </div>
+            <div class="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-6 pb-24" id="mission-list"></div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="quiz-modal" class="fixed inset-0 bg-black/95 backdrop-blur-lg z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 w-full max-w-2xl rounded-[3rem] shadow-2xl border border-amber-500/30 p-8 flex flex-col max-h-[90vh]">
+            <div class="relative z-10 flex items-center gap-4 border-b border-slate-800 pb-4 shrink-0 text-amber-400">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                <h2 class="text-xl font-bold uppercase tracking-widest font-tech">Mission Briefing</h2>
+            </div>
+            <div id="quiz-dynamic-content" class="relative z-10 flex-1 overflow-y-auto py-6 flex flex-col text-slate-100 normal-case"></div>
+        </div>
+    </div>
+
+    <div id="math-modal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 hidden flex items-center justify-center p-4 text-center">
+        <div class="bg-slate-900 w-full max-w-md rounded-[2.5rem] shadow-2xl border border-emerald-500/20 p-10">
+            <h2 class="text-2xl font-bold text-emerald-400 font-tech uppercase tracking-widest mb-6">Security Link</h2>
+            <div class="bg-black/40 rounded-lg p-6 border border-emerald-500/20 mb-6"><div id="math-question" class="text-4xl font-mono font-bold text-emerald-300"></div></div>
+            <div class="space-y-4">
+                <input type="number" id="math-answer" class="w-full bg-slate-950/80 border border-slate-700 rounded-2xl px-6 py-5 text-white text-center text-xl font-mono uppercase" placeholder="CODE">
+                <div class="grid grid-cols-2 gap-3"><button id="btn-cancel" class="py-3 border border-slate-700 rounded-lg uppercase text-xs font-bold text-slate-500">Abort</button><button id="btn-submit-answer" class="bg-emerald-600 py-3 rounded-lg text-xs font-bold text-white uppercase">Verify</button></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="save-modal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-[60] hidden flex items-center justify-center p-4 text-center">
+        <div class="bg-slate-800 w-full max-w-lg rounded-[3rem] p-10 border border-cyan-500/20 shadow-2xl">
+            <h3 class="text-2xl font-bold text-cyan-400 mb-4 font-tech uppercase">Data Backup</h3>
+            <p class="text-slate-400 text-sm mb-6 uppercase tracking-tighter text-balance">Copy the following code to preserve your session status.</p>
+            <div class="bg-black/50 p-6 rounded-lg border border-slate-700 mb-6 font-mono text-3xl font-bold text-emerald-400 uppercase" id="save-code-display">----</div>
+            <div class="flex gap-3"><button id="btn-close-save" class="flex-1 py-3 text-slate-400 border border-slate-700 rounded-lg font-bold">CLOSE</button><button id="btn-copy-code" class="flex-1 py-3 bg-cyan-600 text-white font-bold rounded-lg uppercase shadow-lg shadow-cyan-900/40">Copy Code</button></div>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed top-24 right-6 bg-slate-900/95 backdrop-blur border-l-4 border-cyan-500 text-white px-6 py-5 rounded-2xl shadow-2xl flex items-start gap-4 transition-all duration-500 opacity-0 translate-x-12 pointer-events-none z-[70] max-w-sm">
+        <div class="text-2xl pt-0.5">🚀</div>
+        <div class="space-y-1"><h4 id="toast-title" class="font-bold text-sm text-cyan-400 leading-none"></h4><p id="toast-message" class="text-xs text-slate-400 normal-case leading-snug"></p></div>
+    </div>
+
+    <script>
+        // --- UTILITIES ---
+        function parseMarkdown(t) {
+            if (!t) return "";
+            return t.replace(/\*\*(.*?)\*\*/g, '<span class="text-amber-400 font-bold">$1</span>').replace(/\n/g, '<br>');
+        }
+
+        // --- MASTER DATA ---
+        const RANKS = [
+            { title: '수습 요원', minXp: 0, color: 'bg-slate-400' },
+            { title: '정식 요원', minXp: 300, color: 'bg-purple-400' },
+            { title: '상급 요원', minXp: 800, color: 'bg-blue-400' },
+            { title: '특수 요원', minXp: 2000, color: 'bg-amber-400' },
+            { title: '타임 키퍼', minXp: 5000, color: 'bg-red-500' }
+        ];
+
+        const EPISODES = [
+            { id: 1, title: "인류의 여명", subTitle: "구석기", icon: "🔥" },
+            { id: 2, title: "문명과 국가", subTitle: "신석기", icon: "🏺" },
+            { id: 3, title: "청동기 사회", subTitle: "질서의 시작", icon: "⚔️" },
+            { id: 4, title: "고조선 수호", subTitle: "첫 나라의 탄생", icon: "🌞" },
+            { id: 5, title: "고구려 기상", subTitle: "대륙의 불꽃", icon: "🐎" },
+            { id: 6, title: "백제의 향기", subTitle: "바다의 예술", icon: "⛵" },
+            { id: 7, title: "신라의 별", subTitle: "황금의 나라", icon: "⭐" }
+        ];
+
+        const MISSIONS_MASTER = [
+            { id: 'm1', episode: 1, year: 'BC 700,000', title: '미션 1: 꺼지지 않는 희망', location: '한반도 전역', desc: '불을 "괴물"이라고 속여 인류가 불을 멀리하게 만드는 악당을 막으세요.', energyCost: 20, rewardXp: 50, locked: false, completed: false },
+            { id: 'm2', episode: 1, year: 'BC 300,000', title: '미션 2: 주먹도끼의 비밀', location: '연천 전곡리', desc: '석기 장인을 방해하고 규암을 숨기는 악당의 저주를 풀어야 합니다.', energyCost: 25, rewardXp: 70, locked: true, completed: false },
+            { id: 'm3', episode: 1, year: 'BC 40,000', title: '미션 3: 흥수아이의 마지막 인사', location: '청주 흥수굴', desc: '인류의 따뜻한 마음을 삭제하려는 악당으로부터 인류애를 수호하세요.', energyCost: 30, rewardXp: 100, locked: true, completed: false },
+            { id: 'm4', episode: 2, year: 'BC 8,000', title: '미션 4: 신석기 혁명의 위기', location: '강가 마을', desc: '성장 억제 가스를 해체하고 정착 생활의 가치를 사람들에게 알려주세요.', energyCost: 30, rewardXp: 80, locked: true, completed: false },
+            { id: 'm5', episode: 2, year: 'BC 6,000', title: '미션 5: 저장의 기술을 지켜라', location: '서울 암사동', desc: '토기를 부수고 다니는 악당을 잡고 뾰족한 바닥의 비밀을 밝혀 저장 기술을 지키세요.', energyCost: 30, rewardXp: 90, locked: true, completed: false },
+            { id: 'm6', episode: 2, year: 'BC 5,000', title: '미션 6: 사라진 조개 가면', location: '부산 동삼동 패총', desc: '악당이 바다에 던져버린 가면을 회수하여 마을 축제를 개최하세요!', energyCost: 35, rewardXp: 110, locked: true, completed: false },
+            { id: 'm7', episode: 3, year: 'BC 1,500', title: '미션 7: 비파형 동검의 진실', location: '만주·한반도', desc: '진짜 동검을 훔치고 나무 단검을 놓아둔 악당을 막아 부족장의 권위를 회복하세요.', energyCost: 35, rewardXp: 120, locked: true, completed: false },
+            { id: 'm8', episode: 3, year: 'BC 1,000', title: '미션 8: 고인돌 운반 작전', location: '강화·고창·화순', desc: '지렛대를 이용해 거대한 덮개돌을 이동시켜 지배자의 무덤을 완성하세요.', energyCost: 40, rewardXp: 140, locked: true, completed: false },
+            { id: 'm9', episode: 3, year: 'BC 1,000', title: '미션 9: 사라진 반달 돌칼', location: '한반도 농경지', desc: '돌칼의 구멍에 끈을 꿰어 사용하는 법을 가르치고 가을 수확을 성공시키세요.', energyCost: 35, rewardXp: 150, locked: true, completed: false },
+            { id: 'm10', episode: 4, year: 'BC 2,333', title: '미션 10: 단군의 강림, 홍익인간 정신', location: '아사달', desc: '천부인을 되찾고 곰의 시련을 도와 홍익인간의 정신으로 나라를 건국하세요.', energyCost: 45, rewardXp: 160, locked: true, completed: false },
+            { id: 'm11', episode: 4, year: 'BC 1,500', title: '미션 11: 사라진 8조법, 정의 수호', location: '고조선 전역', desc: '부서진 비석을 복원하고 8조법을 어긴 자를 판결하여 사회 질서를 바로잡으세요.', energyCost: 40, rewardXp: 150, locked: true, completed: false },
+            { id: 'm12', episode: 4, year: 'BC 194', title: '미션 12: 철기 문화의 전파', location: '왕검성', desc: '용광로를 수리하고 단단한 철제 무기를 제련하여 위만조선의 성장을 도우세요.', energyCost: 45, rewardXp: 180, locked: true, completed: false },
+            { id: 'm13', episode: 5, year: 'BC 37', title: '미션 13: 주몽의 탈출', location: '부여·압록강', desc: '잠든 생물들을 깨워 다리를 만들고 고구려를 건국하는 주몽을 도우세요.', energyCost: 45, rewardXp: 200, locked: true, completed: false },
+            { id: 'm14', episode: 5, year: 'AD 414', title: '미션 14: 광개토대왕의 비석', location: '집안', desc: '비석에서 지워진 문자를 복원하고 독자적 연호 "영락"의 자부심을 되찾으세요.', energyCost: 50, rewardXp: 220, locked: true, completed: false },
+            { id: 'm15', episode: 5, year: 'AD 612', title: '미션 15: 살수의 물결', location: '살수', desc: '적장의 현대식 방수복을 회수하고 을지문덕의 시로 적을 물리치세요.', energyCost: 55, rewardXp: 250, locked: true, completed: false },
+            { id: 'm16', episode: 6, year: 'AD 369', title: '미션 16: 칠지도의 비밀', location: '백제, 위례성', desc: '일곱 개의 가지를 가진 칼을 디자인하고 왕의 메시지를 다시 새기세요.', energyCost: 50, rewardXp: 240, locked: true, completed: false },
+            { id: 'm17', episode: 6, year: 'AD 525', title: '미션 17: 무령왕릉의 수호신', location: '웅진', desc: '무덤 수호신 진묘수를 깨워 폭탄을 든 악당을 쫓아내고 입구를 봉인하세요.', energyCost: 55, rewardXp: 260, locked: true, completed: false },
+            { id: 'm18', episode: 6, year: 'AD 567', title: '미션 18: 백제 금동대향로', location: '사비', desc: '향로 속 오악사의 악기를 찾아 평화의 음악을 연주하고 향기를 되살리세요.', energyCost: 60, rewardXp: 300, locked: true, completed: false },
+            { id: 'm19', episode: 7, year: 'AD 500', title: '미션 19: 금관의 주인, 황금의 빛', location: '경주', desc: '곡옥을 플라스틱으로 바꾼 악당을 막고 왕의 권위가 담긴 금관을 복원하세요.', energyCost: 55, rewardXp: 280, locked: true, completed: false },
+            { id: 'm20', episode: 7, year: 'AD 633', title: '미션 20: 첨성대의 별지기', location: '경주 첨성대', desc: '안개 장치를 파괴하고 27단의 돌을 쌓아 천문 관측을 정상화하세요.', energyCost: 60, rewardXp: 300, locked: true, completed: false },
+            { id: 'm21', episode: 7, year: 'AD 645', title: '미션 21: 황룡사 9층 목탑', location: '황룡사', desc: '기울어진 목탑의 설계를 수정하고 삼국 통일의 염원을 담아 탑을 세우세요.', energyCost: 65, rewardXp: 350, locked: true, completed: false }
+        ];
+
+        const QUIZ_SCENARIOS = {
+            'm1': { scenario: "**역사적 팩트:** 불은 구석기 인류에게 추위를 막아주고 음식을 익혀 먹게 하여 뇌 발달을 도운 혁명적 도구입니다.\n\n**악당의 왜곡:** 악당이 \"불은 너희를 잡아먹는 괴물이다!\"라며 선동합니다. 불의 진짜 용도를 알려주세요.", question: "구석기인들에게 알려줘야 할 **불의 가장 중요한 역할**은?", options: [{ text: "고기를 익혀 뇌 발달을 돕고 맹수와 추위를 막아준다.", correct: true }, { text: "흙을 구워 빗살무늬 토기를 만드는 연료로 쓴다.", correct: false }, { text: "비파형 동검을 제련하기 위해 쓴다.", correct: false }, { text: "벼농사를 위한 비료로 사용한다.", correct: false }] },
+            'm2': { scenario: "**역사적 팩트:** 주먹도끼는 구석기 시대의 만능 도구로 정교한 가공 기술이 포함되어 있습니다.\n\n**악당의 왜곡:** 악당이 장인들의 손에 저주를 걸어 투박한 찍개만 만들게 합니다. 장인에게 **규암**을 전하고 기술을 복구하세요!", question: "연천 전곡리 **'아슐리안 주먹도끼'**가 세계 역사에서 중요한 이유는?", options: [{ text: "동아시아에도 정교한 양면 핵석기 기술이 존재했음을 증명했다.", correct: true }, { text: "유럽에서 수입된 물건임이 밝혀져 교류의 증거가 되었다.", correct: false }, { text: "최초로 철을 사용하여 만든 강력한 무기였다.", correct: false }, { text: "농사를 짓기 위해 땅을 파는 전용 도구였다.", correct: false }] },
+            'm3': { scenario: "**역사적 팩트:** 흥수아이 유골 주변의 국화꽃 가루는 구석기인들에게도 장례 의식과 사후 세계관이 있었음을 보여줍니다.\n\n**악당의 왜곡:** 악당이 시신을 그냥 버리라고 세뇌하며 꽃을 시들게 합니다. 싱싱한 **국화꽃**을 모아 장례를 도우세요!", question: "흥수아이 유골 주변의 **국화꽃 가루**가 알려주는 역사적 사실은?", options: [{ text: "구석기인들에게도 죽음을 슬퍼하는 '장례 풍습'과 '사후 세계관'이 존재했다.", correct: true }, { text: "꽃을 말려서 약으로 사용하는 지혜가 있었다.", correct: false }, { text: "바람에 날려와 우연히 동굴에 쌓인 것이다.", correct: false }, { text: "동굴 내부를 아름답게 꾸미기 위해 꽃을 재배했다.", correct: false }] },
+            'm4': { scenario: "**역사적 팩트:** 신석기 시대에 농경과 목축이 시작되면서 인류는 이동 생활을 멈추고 정착하기 시작했습니다.\n\n**악당의 왜곡:** 가스를 뿌려 농사를 망치고 사람들을 다시 떠돌이로 만들려 합니다. **돌낫**으로 수확의 기쁨을 보여주세요!", question: "신석기 혁명으로 인해 나타난 **가장 중요한 생활의 변화**는?", options: [{ text: "강가나 바닷가에 움집을 짓고 정착 생활을 시작했다.", correct: true }, { text: "철을 녹여 단단한 무기와 농기구를 만들었다.", correct: false }, { text: "사유 재산이 생기고 신분 계급이 발생했다.", correct: false }, { text: "먹거리를 찾아 끊임없이 이동하며 동굴에 살았다.", correct: false }] },
+            'm5': { scenario: "**역사적 팩트:** 빗살무늬 토기는 신석기인의 지혜가 담긴 저장 도구로 바닥이 뾰족한 것이 특징입니다.\n\n**악당의 왜곡:** 토기를 모두 부수고 다닙니다. 조각을 이어 붙여 복원하고 **V자 모양 바닥**의 비밀을 밝히세요!", question: "신석기인들은 왜 토기의 밑바닥을 **뾰족하게** 만들었을까요?", options: [{ text: "강가나 바닷가의 모래밭에 꽂아 고정하기 위해", correct: true }, { text: "머리에 이고 다니기 편하게 만들기 위해", correct: false }, { text: "빗물이 잘 흘러내리게 하기 위해", correct: false }, { text: "식탁 위에 안정적으로 올려두기 위해", correct: false }] },
+            'm6': { scenario: "**역사적 팩트:** 동삼동 패총의 조개 가면은 풍요를 기원하는 축제나 의례에 사용된 초기 예술품입니다.\n\n**악당의 왜곡:** 조개 가면과 장신구를 바다에 던져버렸습니다. 가면을 회수하고 **치레걸이**를 만들어 축제를 개최하세요!", question: "신석기 **조개껍데기 가면**이 가지는 역사적 의미는?", options: [{ text: "풍요를 기원하거나 축제 때 사용된 인류 초기의 예술이자 신앙의 증거이다.", correct: true }, { text: "부족 간의 전투에서 적을 위협하기 위해 만든 장비이다.", correct: false }, { text: "조개를 많이 잡기 위해 그물에 달아놓은 낚시 도구이다.", correct: false }, { text: "다른 지역과의 교역을 위해 화폐 대신 사용한 물건이다.", correct: false }] },
+            'm7': { scenario: "**역사적 팩트:** 비파형 동검은 부족장의 강력한 권위를 상징하는 청동기 시대의 독자적 유물입니다.\n\n**악당의 왜곡:** 진짜 동검을 훔치고 나무 단검으로 바꿔치기했습니다. **거푸집**을 찾아 진짜 동검을 제련하세요!", question: "청동기 시대의 상징인 **'비파형 동검'**이 당시 사회에서 가졌던 주된 의미는?", options: [{ text: "부족장의 강력한 권위와 지배력을 상징하는 도구였다.", correct: true }, { text: "모든 백성이 평등하게 사용하던 농기구였다.", correct: false }, { text: "사냥을 할 때 짐승의 가죽을 벗기는 전용 칼이었다.", correct: false }, { text: "다른 나라와 무역할 때 화폐 대용으로 사용한 칼이었다.", correct: false }] },
+            'm8': { scenario: "**역사적 팩트:** 고인돌은 거대한 돌을 옮길 수 있는 수많은 노동력을 동원한 강력한 군장의 등장을 보여줍니다.\n\n**악당의 왜곡:** 기름을 발라 돌을 미끄럽게 방해합니다. **굴림대와 지렛대**로 덮개돌을 이동시키세요!", question: "거대한 무덤인 **'고인돌'**을 통해 알 수 있는 당시의 사회 모습은?", options: [{ text: "수많은 노동력을 동원할 수 있는 강력한 지배자가 등장한 계급 사회였다.", correct: true }, { text: "모든 사람이 똑같이 재산을 나누어 갖는 평등한 사회였다.", correct: false }, { text: "농사를 짓고 열매 채집만 하며 떠돌던 사회였다.", correct: false }, { text: "글자를 사용하여 왕의 업적을 기록으로 남기던 사회였다.", correct: false }] },
+            'm9': { scenario: "**역사적 팩트:** 청동기 시대에도 농기구는 주로 석기를 사용했으며 반달 돌칼이 대표적입니다.\n\n**악당의 왜곡:** 돌칼을 숨기고 돌덩이로 바꿔놓았습니다. **끈을 꿰어 사용하는 법**을 가르쳐 벼 수확을 도우세요!", question: "청동기 시대에도 농기구로 청동기 대신 **'반달 돌칼'** 같은 석기를 주로 사용한 이유는?", options: [{ text: "청동은 만들기가 어렵고 귀해서 주로 무기나 제사 도구로 쓰였기 때문이다.", correct: true }, { text: "청동은 돌보다 약해서 벼를 베는 데 적합하지 않았기 때문이다.", correct: false }, { text: "당시에는 아직 청동을 만드는 기술이 부족했기 때문이다.", correct: false }, { text: "돌로 만든 도구가 청동보다 훨씬 더 효율적이었기 때문이다.", correct: false }] },
+            'm10': { scenario: "**역사적 팩트:** 고조선 건국 이야기에는 널리 인간 세상을 이롭게 한다는 홍익인간 정신이 담겨 있습니다.\n\n**악당의 왜곡:** 천부인을 숨기고 곰에게 사탕을 주어 유혹합니다. 진짜 보물을 찾아 전달하고 **홍익인간** 정신을 지키세요!", question: "고조선의 건국 이념인 **'홍익인간'**의 뜻은 무엇인가요?", options: [{ text: "널리 인간 세상을 이롭게 한다.", correct: true }, { text: "왕에게 무조건 복종하고 충성한다.", correct: false }, { text: "다른 나라를 정복하여 영토를 넓힌다.", correct: false }, { text: "오직 부자들만이 행복한 나라를 만든다.", correct: false }] },
+            'm11': { scenario: "**역사적 팩트:** 8조법은 고조선의 사회 질서 유지를 위한 법으로 생명 존중과 사유 재산 인정을 보여줍니다.\n\n**악당의 왜곡:** 비석을 부수고 법의 개념을 지워버렸습니다. 비석을 복원하고 **8조법**을 지켜 질서를 잡으세요!", question: "고조선의 **'8조법'** 중 '남의 물건을 훔친 자는 노비로 삼는다'를 통해 알 수 있는 사회 모습은?", options: [{ text: "사유 재산을 인정하고 신분 계급이 존재하는 사회였다.", correct: true }, { text: "모든 사람이 법 없이도 사는 평등한 사회였다.", correct: false }, { text: "돈으로 모든 죄를 해결하는 화폐 경제 사회였다.", correct: false }, { text: "다른 나라와의 교역을 법으로 금지하던 사회였다.", correct: false }] },
+            'm12': { scenario: "**역사적 팩트:** 위만조선 시기 철기 문화가 본격적으로 수용되며 국력이 비약적으로 성장했습니다.\n\n**악당의 왜곡:** 용광로 온도를 낮추고 진흙으로 칼을 만들게 조작했습니다. **풀무**를 고쳐 철제 무기를 제련하세요!", question: "고조선이 **철기 문화**를 본격적으로 수용하면서 나타난 가장 큰 변화는?", options: [{ text: "농업 생산력이 크게 늘어나고 군사력이 매우 강력해졌다.", correct: true }, { text: "석기 도구의 사용이 이전보다 훨씬 더 많아졌다.", correct: false }, { text: "사람들이 농사를 포기하고 다시 사냥만 하게 되었다.", correct: false }, { text: "모든 사람이 왕이 될 수 있는 민주주의가 시작되었다.", correct: false }] },
+            'm13': { scenario: "**역사적 팩트:** 주몽은 뛰어난 활솜씨로 고구려를 건국한 시조입니다.\n\n**악당의 왜곡:** 강물을 잠재워 주몽의 탈출을 막고 활시위도 끊었습니다. **물고기와 자라**를 깨워 다리를 만들게 도우세요!", question: "고구려를 세운 인물로 이름의 뜻이 **'활을 잘 쏘는 사람'**인 인물은?", options: [{ text: "주몽 (동명성왕)", correct: true }, { text: "온조", correct: false }, { text: "박혁거세", correct: false }, { text: "김수로", correct: false }] },
+            'm14': { scenario: "**역사적 팩트:** 광개토대왕릉비는 고구려의 넓은 영토 확장과 독자적 연호 영락의 자부심을 기록한 비석입니다.\n\n**악당의 왜곡:** 문자를 지워버렸습니다! **永(영), 樂(락)** 등 사라진 문자를 찾아 비석을 완성하세요!", question: "우리나라 최초의 독자적 연호인 **'영락'**은 어떤 의미를 담고 있나요?", options: [{ text: "고구려가 중국과 대등하며 '영원한 즐거움'을 누리는 자주 국가임을 선포함", correct: true }, { text: "중국 황제의 명령에 절대 복종하며 나라를 다스리겠다는 다짐", correct: false }, { text: "백성들에게 세금을 많이 걷어 왕실을 부유하게 만들겠다는 계획", correct: false }, { text: "영토 확장을 중단하고 다른 나라와 평화롭게만 지내겠다는 약속", correct: false }] },
+            'm15': { scenario: "**역사적 팩트:** 살수대첩은 을지문덕 장군이 둑을 터뜨리는 지략으로 수나라 113만 대군을 격파한 전투입니다.\n\n**악당의 왜곡:** 수나라에 현대식 장비를 주었습니다! 장비를 회수하고 **둑을 터뜨리는 타이밍**을 맞추세요!", question: "살수대첩에서 을지문덕 장군이 적장 우중문에게 보낸 시의 핵심 내용은?", options: [{ text: "이미 큰 공을 세웠으니 만족함을 알고 돌아가라는 경고와 조롱", correct: true }, { text: "고구려가 항복할 테니 군사를 거두어 달라는 간곡한 부탁", correct: false }, { text: "수나라의 문화가 훌륭하니 우리에게 전해달라는 요청", correct: false }, { text: "앞으로 사이좋게 지내며 형제의 나라가 되자는 제안", correct: false }] },
+            'm16': { scenario: "**역사적 팩트:** 칠지도는 백제의 뛰어난 철기 공예와 대외 교류를 상징하는 일곱 가지 모양의 칼입니다.\n\n**악당의 왜곡:** 칼을 평범한 부엌칼로 바꾸고 글자를 지우려 합니다. **일곱 개의 가지** 디자인을 복원하고 메시지를 새기세요!", question: "백제 근초고왕이 왜 왕에게 보낸 **칠지도**가 알려주는 사실은?", options: [{ text: "백제의 뛰어난 금속 공예 기술과 활발한 대외 관계를 증명한다.", correct: true }, { text: "백제가 바다 너머 전쟁을 시작한다는 선전포고이다.", correct: false }, { text: "백제의 주방 기구가 세계 최고였음을 보여준다.", correct: false }, { text: "일본에서 수입해온 고급 무기임을 나타낸다.", correct: false }] },
+            'm17': { scenario: "**역사적 팩트:** 무령왕릉은 벽돌무덤으로 수호신 진묘수와 화려한 장신구가 다수 출토되었습니다.\n\n**악당의 왜곡:** 폭탄으로 입구를 파괴하려 합니다! **진묘수**를 깨워 악당을 쫓아내고 입구를 봉인하세요!", question: "무령왕릉의 벽돌 양식과 유물을 통해 알 수 있는 백제 문화의 특징은?", options: [{ text: "중국 남조와 활발히 교류한 백제의 국제성을 보여준다.", correct: true }, { text: "외부와 단절된 백제만의 독자적인 문화만 발달했음을 보여준다.", correct: false }, { text: "아무런 장신구도 넣지 않는 소박한 장례 문화를 보여준다.", correct: false }, { text: "백제 사람들이 평야 지대에서만 생활했음을 증명한다.", correct: false }] },
+            'm18': { scenario: "**역사적 팩트:** 금동대향로는 백제 금속 공예의 정수로 불교와 도교 사상이 조화를 이루고 있습니다.\n\n**악당의 왜곡:** 악사들의 악기를 뺏어 음악을 멈추려 합니다. **오악사**를 찾아 악기를 돌려주고 봉황을 빛내세요!", question: "백제 **금동대향로**에 담긴 종교적·예술적 가치는 무엇인가요?", options: [{ text: "불교와 도교의 세계관이 어우러진 백제 금속 공예의 최고 정수이다.", correct: true }, { text: "음식을 끓여 먹기 위해 특별히 제작된 화려한 주방 도구이다.", correct: false }, { text: "외국에서 수입해온 물건으로 백제 기술과는 상관이 없다.", correct: false }, { text: "오직 신라의 문화에만 영향을 받아 제작된 모방품이다.", correct: false }] },
+            'm19': { scenario: "**역사적 팩트:** 신라 금관은 세계적으로 화려한 유물이며 곡옥은 생명력과 권위를 상징합니다.\n\n**악당의 왜곡:** 곡옥을 플라스틱으로 바꿨습니다! **초록빛 곡옥**들을 찾아 금실로 단단히 고정하여 왕의 권위를 세우세요!", question: "신라 금관에 달린 **'곡옥(굽은 옥)'**은 무엇을 상징하나요?", options: [{ text: "생명력과 권위", correct: true }, { text: "물고기의 눈", correct: false }, { text: "장례의 슬픔", correct: false }, { text: "단순한 노리개", correct: false }] },
+            'm20': { scenario: "**역사적 팩트:** 첨성대는 선덕여왕 때 세워진 천문대로 27단의 돌을 정교하게 쌓아 올렸습니다.\n\n**악당의 왜곡:** 안개 장치로 별을 가렸습니다! 장치를 부수고 **27단의 돌**을 하나하나 쌓아 별지기를 도우세요!", question: "동양에서 가장 오래된 천문대인 **'첨성대'**를 세운 주된 목적은?", options: [{ text: "하늘의 움직임을 관찰해 농사 시기를 정하고 국가의 길흉을 점침", correct: true }, { text: "적의 침입을 미리 감시하고 봉화를 올리기 위해", correct: false }, { text: "화랑들이 수련을 하던 도장", correct: false }, { text: "왕의 유골을 안치하기 위한 거대한 무덤", correct: false }] },
+            'm21': { scenario: "**역사적 팩트:** 황룡사 9층 목탑은 삼국 통일의 간절한 염원을 담아 9개 나라를 의미하는 층을 올린 탑입니다.\n\n**악당의 왜곡:** 설계를 조작해 탑을 기울게 합니다. **올바른 공법**으로 목탑을 9층까지 당당히 올리세요!", question: "신라가 거대한 **'황룡사 9층 목탑'**을 세운 가장 큰 이유는?", options: [{ text: "주변 나라의 침략을 막고 삼국 통일을 이루려는 염원", correct: true }, { text: "백성들에게 세금을 많이 걷기 위한 명분", correct: false }, { text: "고구려의 공격을 피하기 위한 은신처", correct: false }, { text: "바다 건너 무역을 위한 등대 역할", correct: false }] }
+        };
+
+        // --- 2. LOGIC FUNCTIONS ---
+        let state = { codename: 'Unknown', energy: 100, xp: 0, currentRankIndex: 0, activeEpisodeId: 1, missions: JSON.parse(JSON.stringify(MISSIONS_MASTER)) };
+        let currentQuizMid = null, currentQuizData = null, currentMathAnswer = 0;
+        let selectorsBound = false;
+
+        // UI Selectors
+        let elAgentName, elEnergyBar, elEnergyText, elXpText, elXpBar, elRankText, elRankIndicator, elRankList, elMissionList, elEpisodeTabs, elBtnRecharge, mathModal, elMathQuestion, elMathAnswer, quizModal, quizDynamic, saveModal, elSaveDisplay, elToast, elIntro, elIntroInput, elIntroCode, elStartBtn;
+
+        function bindElements() {
+            elAgentName = document.getElementById('agent-name'); elEnergyBar = document.getElementById('energy-bar'); elEnergyText = document.getElementById('energy-text');
+            elXpText = document.getElementById('current-xp'); elXpBar = document.getElementById('xp-bar'); elRankText = document.getElementById('rank-text');
+            elRankIndicator = document.getElementById('rank-indicator'); elRankList = document.getElementById('rank-list'); elMissionList = document.getElementById('mission-list');
+            elEpisodeTabs = document.getElementById('episode-tabs'); elBtnRecharge = document.getElementById('btn-recharge'); mathModal = document.getElementById('math-modal');
+            elMathQuestion = document.getElementById('math-question'); elMathAnswer = document.getElementById('math-answer'); quizModal = document.getElementById('quiz-modal');
+            quizDynamic = document.getElementById('quiz-dynamic-content'); saveModal = document.getElementById('save-modal'); elSaveDisplay = document.getElementById('save-code-display');
+            elToast = document.getElementById('toast'); elIntro = document.getElementById('intro-screen'); elIntroInput = document.getElementById('intro-name-input');
+            elIntroCode = document.getElementById('intro-code-input'); elStartBtn = document.getElementById('btn-start-game');
+            selectorsBound = true;
+        }
+
+        function showToast(t, m, c = 'bg-slate-700') {
+            if (!elToast) return;
+            const titleEl = document.getElementById('toast-title'), msgEl = document.getElementById('toast-message');
+            if (titleEl && msgEl) {
+                titleEl.textContent = t; msgEl.textContent = m;
+                elToast.className = `fixed top-24 right-6 bg-slate-900/95 backdrop-blur border-l-4 ${c.replace('bg-', 'border-')} text-white px-6 py-5 rounded-2xl shadow-2xl flex items-start gap-4 transition-all duration-500 z-[70] max-w-sm opacity-100 translate-x-0`;
+                setTimeout(() => { if(elToast) { elToast.classList.replace('opacity-100', 'opacity-0'); elToast.classList.replace('translate-x-0', 'translate-x-12'); } }, 4000);
+            }
+        }
+
+        function updateStatsUI() {
+            if (!selectorsBound) bindElements();
+            if (!elEnergyBar) return;
+            elEnergyBar.style.width = `${state.energy}%`; elEnergyText.textContent = `${state.energy}%`;
+            const r = RANKS[state.currentRankIndex], n = RANKS[state.currentRankIndex + 1];
+            elXpText.textContent = state.xp; elRankText.textContent = r.title;
+            elRankIndicator.className = `w-3.5 h-3.5 rounded-full ${r.color} shadow-lg`;
+            if (n) elXpBar.style.width = `${Math.min(100, Math.max(0, ((state.xp - r.minXp) / (n.minXp - r.minXp)) * 100))}%`;
+            else elXpBar.style.width = '100%';
+            updateRankListUI(); updateLocks(); renderTabs(); renderMissions();
+        }
+
+        function updateRankListUI() {
+            if (!elRankList) return;
+            elRankList.innerHTML = RANKS.map((r, i) => `<li class="flex items-center justify-between p-3 rounded-xl transition-all ${i === state.currentRankIndex ? 'bg-cyan-500/10 ring-1 ring-cyan-500/50' : 'opacity-30'}">
+                <div class="flex items-center gap-3"><div class="w-3 h-3 rounded-full ${r.color}"></div><span class="text-xs font-bold ${i === state.currentRankIndex ? 'text-white' : 'text-slate-400'} uppercase">${r.title}</span></div>
+                <span class="text-[10px] font-mono font-bold text-slate-500 uppercase">${r.minXp} XP</span></li>`).join('');
+        }
+
+        function updateLocks() {
+            if (state.missions.length > 0 && !state.missions[0].completed) state.missions[0].locked = false;
+            for (let i = 0; i < state.missions.length - 1; i++) if (state.missions[i].completed) state.missions[i+1].locked = false;
+        }
+
+        function renderTabs() {
+            if (!elEpisodeTabs) return;
+            const unlockedEps = [...new Set(state.missions.filter(m => !m.locked).map(m => m.episode))];
+            elEpisodeTabs.innerHTML = EPISODES.map(ep => {
+                const isActive = state.activeEpisodeId === ep.id;
+                const isUnlocked = ep.id === 1 || unlockedEps.includes(ep.id);
+                return `<button onclick="${isUnlocked ? `setActiveEpisode(${ep.id})` : ''}" class="px-2 py-3 rounded-2xl font-tech font-bold text-[10px] transition-all flex flex-col items-center justify-center border border-slate-800 bg-slate-900/50 ${isActive ? 'active-tab' : 'text-slate-500 hover:border-slate-600'} ${!isUnlocked ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}">
+                    <span class="text-xl mb-1">${ep.icon}</span><span class="mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis w-full px-1 uppercase leading-none">${ep.title}</span></button>`;
+            }).join('');
+        }
+
+        window.setActiveEpisode = function(id) { state.activeEpisodeId = id; updateStatsUI(); elMissionList.scrollTop = 0; };
+
+        function renderMissions() {
+            if (!elMissionList) return;
+            const list = state.missions.filter(m => m.episode === state.activeEpisodeId);
+            elMissionList.innerHTML = list.map(m => {
+                const isL = m.locked, isC = m.completed, canA = state.energy >= m.energyCost;
+                let bCls = 'border-slate-800', bgCls = 'bg-slate-900/40', btnCls = canA ? 'bg-cyan-600 hover:bg-cyan-500 text-white' : 'bg-slate-800 text-slate-500 cursor-not-allowed', btnTxt = canA ? 'START' : 'LOW POWER', badge = '';
+                if (isC) { bCls = 'border-slate-800/50'; bgCls = 'bg-slate-950/50'; btnCls = 'bg-slate-800 text-slate-500 cursor-default'; btnTxt = 'DONE'; badge = `<div class="absolute inset-0 flex items-center justify-center z-10 pointer-events-none uppercase"><div class="border-4 border-slate-700/50 text-slate-600 font-stamp text-4xl p-4 rotate-[-15deg] opacity-70 uppercase tracking-tighter">Completed</div></div>`; }
+                else if (isL) { bCls = 'border-slate-900'; bgCls = 'bg-slate-950/20'; btnCls = 'hidden'; badge = `<div class="absolute inset-0 flex items-center justify-center bg-slate-950/70 z-10 backdrop-blur-[1px] rounded-[2rem] uppercase"><span class="flex items-center gap-2 font-mono text-slate-600 bg-slate-950 px-5 py-2 rounded-full border border-slate-800 uppercase tracking-widest text-[10px]"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> System Locked</span></div>`; }
+                else bCls = 'border-slate-700 hover:border-cyan-500/50';
+                return `<div class="relative group border ${bCls} ${bgCls} rounded-[2rem] p-7 transition-all duration-300 overflow-hidden shadow-lg">
+                    ${badge}
+                    <div class="flex flex-col md:flex-row justify-between md:items-start gap-5 mb-5 ${isC ? 'opacity-40' : ''}">
+                        <div class="space-y-3">
+                            <div class="flex items-center gap-3"><span class="font-tech text-3xl font-bold ${isL || isC ? 'text-slate-700' : 'text-cyan-400'}">${m.year}</span><span class="text-[9px] px-3 py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700 uppercase font-bold tracking-widest">${m.location}</span></div>
+                            <h3 class="text-xl font-bold text-white tracking-tight">${m.title}</h3>
+                            <p class="text-slate-400 text-sm leading-relaxed max-w-xl font-light normal-case">${parseMarkdown(m.desc)}</p>
+                        </div>
+                        <div class="shrink-0 flex flex-col items-end gap-1"><span class="text-[9px] font-mono text-slate-600 tracking-widest uppercase">Reward</span><span class="text-amber-400 font-bold font-tech text-2xl tracking-tighter">+${m.rewardXp} XP</span></div>
+                    </div>
+                    <div class="flex items-center justify-between border-t border-slate-800/80 pt-5 ${isC ? 'opacity-40' : ''}">
+                        <div class="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase"><span class="flex items-center gap-1.5 ${canA || isC ? 'text-cyan-400/80' : 'text-rose-500'}"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>-${m.energyCost}% Power</span></div>
+                        <button onclick="attemptMission('${m.id}')" class="mission-btn px-8 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 shadow-lg active:scale-[0.97] ${btnCls}" ${isC || isL ? 'disabled' : ''}>${btnTxt}</button>
+                    </div></div>`;
+            }).join('');
+        }
+
+        window.attemptMission = function(mId) {
+            const m = state.missions.find(x => x.id === mId);
+            if (!m || m.completed || m.locked) return;
+            if (state.energy < m.energyCost) { showToast('LOW ENERGY', '시스템 충전이 필요합니다.', 'bg-rose-500'); return; }
+            if (QUIZ_SCENARIOS[mId]) openQuizModal(mId); else completeMission(mId);
+        };
+
+        function completeMission(mId) {
+            const idx = state.missions.findIndex(x => x.id === mId); if (idx === -1) return;
+            const m = state.missions[idx]; m.completed = true; state.energy -= m.energyCost; state.xp += m.rewardXp;
+            if (idx + 1 < state.missions.length) { 
+                const nextM = state.missions[idx + 1]; nextM.locked = false;
+                if (nextM.episode !== m.episode) {
+                    state.activeEpisodeId = nextM.episode;
+                    showToast('UNLOCKED', `에피소드 ${nextM.episode} 권한을 획득했습니다!`, 'bg-blue-500');
+                }
+            }
+            checkRankUp(); updateStatsUI(); showToast('SUCCESS', `${m.title} 임무 완료!`, 'bg-emerald-500');
+        }
+
+        function openQuizModal(mId) {
+            const q = QUIZ_SCENARIOS[mId]; if (!q) return;
+            currentQuizMid = mId; currentQuizData = q; renderQuizStep1();
+            quizModal.classList.remove('hidden'); quizDynamic.scrollTop = 0;
+        }
+
+        function renderQuizStep1() {
+            quizDynamic.innerHTML = `<div class="bg-slate-950/50 p-8 rounded-3xl border border-slate-800 mb-8 flex-1 text-slate-300 overflow-y-auto"><p class="text-xl leading-relaxed whitespace-pre-line text-balance normal-case">${parseMarkdown(currentQuizData.scenario)}</p></div><div class="flex gap-4 mt-auto shrink-0"><button onclick="quizModal.classList.add('hidden')" class="flex-1 py-4 text-slate-500 hover:text-white border border-slate-800 rounded-2xl font-bold uppercase text-xs">Abort</button><button onclick="renderQuizStep2()" class="flex-1 py-4 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-2xl animate-pulse shadow-xl shadow-amber-900/20 uppercase text-xs">Analyze Strategy</button></div>`;
+            quizDynamic.scrollTop = 0;
+        }
+
+        window.renderQuizStep2 = function() {
+            const shuf = [...currentQuizData.options].sort(() => Math.random() - 0.5);
+            quizDynamic.innerHTML = `<div class="mb-8 flex-1 text-slate-100 overflow-y-auto pr-1"><h3 class="font-bold text-2xl mb-8 leading-snug normal-case">${parseMarkdown(currentQuizData.question)}</h3><div class="grid gap-4">${shuf.map(o => `<button onclick="checkQuizAnswer(${o.correct})" class="w-full text-left p-6 rounded-2xl bg-slate-950/80 border border-slate-800 hover:bg-slate-800 hover:border-amber-500/50 hover:text-amber-400 transition-all text-lg group flex items-start gap-4 normal-case"><span class="w-6 h-6 rounded-lg bg-slate-800 flex items-center justify-center text-[10px] group-hover:bg-amber-500 group-hover:text-black transition-colors shrink-0 mt-1">▶</span><span class="flex-1">${o.text}</span></button>`).join('')}</div></div>`;
+            quizDynamic.scrollTop = 0;
+        };
+
+        window.checkQuizAnswer = function(c) {
+            if (c) { const mid = currentQuizMid; quizModal.classList.add('hidden'); triggerConfetti(); setTimeout(() => completeMission(mid), 300); }
+            else { state.energy = Math.max(0, state.energy - 10); updateStatsUI(); quizModal.classList.add('hidden'); showToast('FAILED', '오답입니다. 차원 간섭으로 에너지가 소실됩니다.', 'bg-rose-500'); }
+        };
+
+        function checkRankUp() { const n = RANKS[state.currentRankIndex + 1]; if (n && state.xp >= n.minXp) { state.currentRankIndex++; triggerConfetti(); showToast('PROMOTED', `'${n.title}' 승급 완료!`, 'bg-purple-600'); } }
+        function openMathModal() { if (state.energy >= 100) return; generateMathProblem(); elMathAnswer.value = ''; mathModal.classList.remove('hidden'); setTimeout(() => elMathAnswer.focus(), 100); }
+        function generateMathProblem() {
+            const op = ['+', '-', '*'][Math.floor(Math.random() * 3)]; let n1, n2;
+            if (op === '+') { n1 = Math.floor(Math.random()*50)+1; n2 = Math.floor(Math.random()*50)+1; currentMathAnswer = n1+n2; }
+            else if (op === '-') { n1 = Math.floor(Math.random()*50)+10; n2 = Math.floor(Math.random()*n1); currentMathAnswer = n1-n2; }
+            else { n1 = Math.floor(Math.random()*9)+2; n2 = Math.floor(Math.random()*9)+2; currentMathAnswer = n1*n2; }
+            elMathQuestion.textContent = `${n1} ${op === '*' ? '×' : op} ${n2} = ?`;
+        }
+        function checkMathAnswer() { if (parseInt(elMathAnswer.value) === currentMathAnswer) { state.energy = 100; updateStatsUI(); mathModal.classList.add('hidden'); triggerConfetti(); showToast('RECHARGED', '에너지가 완전 충전되었습니다.', 'bg-emerald-500'); } else { elMathAnswer.classList.add('shake'); setTimeout(() => elMathAnswer.classList.remove('shake'), 500); } }
+        function triggerConfetti() { if (typeof confetti === 'function') confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } }); }
+        
+        function handleStart() {
+            const n = elIntroInput.value.trim(), c = elIntroCode.value.trim();
+            if (!n) { elIntroInput.classList.add('shake'); return; }
+            state.codename = n;
+            if (c) {
+                const d = parseSaveCode(c);
+                if (d) {
+                    state.xp = d.xp; for(let i=0; i <= d.lastIdx; i++) if (i < state.missions.length) { state.missions[i].completed = true; state.missions[i].locked = false; }
+                    if (d.lastIdx + 1 < state.missions.length) state.missions[d.lastIdx + 1].locked = false;
+                    let rIdx = 0; for(let i=0; i<RANKS.length; i++) if(state.xp >= RANKS[i].minXp) rIdx = i; state.currentRankIndex = rIdx;
+                    const nextIdx = Math.min(state.missions.length - 1, d.lastIdx + 1); state.activeEpisodeId = state.missions[nextIdx]?.episode || 1;
+                }
+            }
+            elAgentName.textContent = state.codename; document.getElementById('access-stamp').classList.add('stamp-animate');
+            setTimeout(() => { elIntro.classList.add('fade-out'); setTimeout(() => { elIntro.style.display = 'none'; updateStatsUI(); }, 1200); }, 1200);
+        }
+
+        const CS32 = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"; 
+        function e32(n) { if (n === 0) return CS32[0]; let r = ""; while (n > 0) { r = CS32[n % 32] + r; n = Math.floor(n / 32); } return r; }
+        function d32(s) { let r = 0; for (let i = 0; i < s.length; i++) { const v = CS32.indexOf(s[i]); if (v === -1) return null; r = r * 32 + v; } return r; }
+        function generateSaveCode() { let l = -1; for(let i=0; i<state.missions.length; i++) if(state.missions[i].completed) l = i; const xS = e32(state.xp), mS = e32(l + 1), ck = (state.xp * 7 + l * 3 + 13) % 32; return `TP-${xS}-${mS}-${CS32[ck]}`; }
+        function parseSaveCode(c) { const p = c.toUpperCase().replace("TP-", "").split("-"); if (p.length < 3) return null; const x = d32(p[0]), m = d32(p[1]); if (x === null || m === null) return null; const l = m - 1, ck = (x * 7 + l * 3 + 13) % 32; if (p[2] !== CS32[ck]) return null; return { xp: x, lastIdx: l }; }
+        function openSaveModal() { elSaveDisplay.textContent = generateSaveCode(); saveModal.classList.remove('hidden'); }
+        function copySaveCode() {
+            const code = elSaveDisplay.textContent; const t = document.createElement("textarea"); t.value = code; document.body.appendChild(t); t.select();
+            try { if(document.execCommand('copy')) showToast('COPIED', '암호 코드가 복사되었습니다.', 'bg-cyan-600'); } catch (err) {}
+            document.body.removeChild(t);
+        }
+
+        function init() {
+            bindElements();
+            updateStatsUI();
+            elStartBtn.addEventListener('click', handleStart);
+            elIntroInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') handleStart(); });
+            elIntroCode.addEventListener('keydown', (e) => { if(e.key === 'Enter') handleStart(); });
+            elBtnRecharge.addEventListener('click', openMathModal);
+            document.getElementById('btn-submit-answer').addEventListener('click', checkMathAnswer);
+            document.getElementById('btn-cancel').addEventListener('click', () => mathModal.classList.add('hidden'));
+            document.getElementById('btn-open-save').addEventListener('click', openSaveModal);
+            document.getElementById('btn-close-save').addEventListener('click', () => saveModal.classList.add('hidden'));
+            document.getElementById('btn-copy-code').addEventListener('click', copySaveCode);
+            setTimeout(() => elIntroInput.focus(), 500);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
